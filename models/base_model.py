@@ -1,47 +1,55 @@
 #!/usr/bin/python3
-"""module of 'BaseModel' class"""
-
+""" `BaseModel` class defines methods that can be inherited
+"""
 from uuid import uuid4
-from datetime import datetime
+from datetime import date, datetime, timezone
 import models
 
 
 class BaseModel:
-    """Representation of a BaseModel"""
-
+    """base model class
+    """
     def __init__(self, *args, **kwargs):
-        """class constructor"""
-        if len(kwargs) > 0:
-            for key, value in kwargs.items():
-                if key in ["created_at", "updated_at"]:
-                    setattr(self, key,
-                            datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%f"))
-                elif key != "__class__":
-                    setattr(self, key, value)
+        """Initialization of base class
+        """
 
+        if kwargs:
+            for name, value in kwargs.items():
+                if name == "__class__":
+                    continue
+                if name == "created_at" or name == "updated_at":
+                    value = datetime.fromisoformat(value)
+                setattr(self, name, value)
         else:
             self.id = str(uuid4())
-            self.created_at = datetime.now()
-            self.updated_at = datetime.now()
+
+            dt_now = datetime.now(timezone.utc)
+            self.created_at = dt_now
+            self.updated_at = dt_now
             models.storage.new(self)
-            models.storage.save()
 
     def __str__(self):
-        """custom __str__ method for BaseModel"""
-        return ("[{}] ({}) {}".format(self.__class__.__name__,
-                                      self.id, self.__dict__))
+        """returns str representation of basemodel instance
+        """
+        out = "[{}] ({}) {}"
+        out = out.format(self.__class__.__name__, self.id, str(self.__dict__))
+        return out
 
     def save(self):
-        """updates updated_at with the current datetime"""
-        self.updated_at = datetime.now()
+        """updates `updated_at` instance variabe when called
+        """
+        self.updated_at = datetime.now(timezone.utc)
         models.storage.save()
 
     def to_dict(self):
-        """returns a dictionary containing all keys/values
-           of __dict__ of the instance"""
+        """ Returns dictionary representation of instance
+        """
+        dict_rep = dict()
+        dict_rep["__class__"] = self.__class__.__name__
 
-        dict_ = dict(self.__dict__)
-        dict_.update({"__class__": self.__class__.__name__,
-                      "created_at": str(((self.created_at).isoformat())),
-                      "updated_at": str(((self.updated_at).isoformat()))})
-        return dict_
+        for k, v in self.__dict__.items():
+            if k == "created_at" or k == "updated_at":
+                dict_rep[k] = v.isoformat()
+            else:
+                dict_rep[k] = v
+        return dict_rep
